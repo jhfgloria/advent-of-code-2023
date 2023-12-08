@@ -10,45 +10,43 @@ import (
 var symbolExpression = regexp.MustCompile(`[^\w\.]`)
 var partNumberExpression = regexp.MustCompile(`\d`)
 
-func countAsPartNumber(lines []string, line []rune, number int, previousLineIndex int, nextLineIndex int, previousCharacterIndex int, nextCharacterIndex int, start int, end int) uint16 {
+func adjacentSymbol(regex *regexp.Regexp, lines []string, line []rune, number int, lineIndex int, previousCharacterIndex int, nextCharacterIndex int, start int, end int) string {
 	if previousCharacterIndex >= 0 {
-		if symbolExpression.MatchString(string(line[previousCharacterIndex])) {
-			return uint16(number)
+		if regex.MatchString(string(line[previousCharacterIndex])) {
+			return fmt.Sprintf("%d:%d", lineIndex, previousCharacterIndex)
 		}
 	}
 
 	if nextCharacterIndex < len(line) {
-		if symbolExpression.MatchString(string(line[nextCharacterIndex])) {
-			return uint16(number)
+		if regex.MatchString(string(line[nextCharacterIndex])) {
+			return fmt.Sprintf("%d:%d", lineIndex, nextCharacterIndex)
 		}
 	}
 
-	if previousLineIndex > 0 {
-		for i := max(0, start-1); i < min(end+1, len(line)-1); i++ {
-			if symbolExpression.MatchString(string(lines[previousLineIndex][i])) {
-				return uint16(number)
+	if (lineIndex - 1) > 0 {
+		for i := max(0, start-1); i < min(end+2, len(line)-1); i++ {
+			if regex.MatchString(string(lines[(lineIndex - 1)][i])) {
+				return fmt.Sprintf("%d:%d", lineIndex-1, i)
 			}
 		}
 	}
 
-	if nextLineIndex < len(lines)-1 {
-		for i := max(0, start-1); i < min(end+1, len(line)-1); i++ {
-			if symbolExpression.MatchString(string(lines[nextLineIndex][i])) {
-				return uint16(number)
+	if (lineIndex+1) <= len(lines)-1 && lines[(lineIndex+1)] != "" {
+		for i := max(0, start-1); i < min(end+2, len(line)-1); i++ {
+			if regex.MatchString(string(lines[(lineIndex + 1)][i])) {
+				return fmt.Sprintf("%d:%d", lineIndex+1, i)
 			}
 		}
 	}
 
-	return 0
+	return ""
 }
 
-func StarOne(input string) uint16 {
+func StarOne(input string) uint32 {
 	lines := strings.Split(input, "\n")
-	result := uint16(0)
+	result := uint32(0)
 
 	for lineIndex, line := range lines {
-		fmt.Println(line)
-
 		strNumber := ""
 		start := -1
 
@@ -63,14 +61,61 @@ func StarOne(input string) uint16 {
 				number, _ := strconv.Atoi(strNumber)
 				previousCharacterIndex := start - 1
 				nextCharacterIndex := charIndex
-				previousLineIndex := lineIndex - 1
-				nextLineIndex := lineIndex + 1
 
-				result += countAsPartNumber(lines, []rune(line), number, previousLineIndex, nextLineIndex, previousCharacterIndex, nextCharacterIndex, start, charIndex)
+				if adjacentSymbol(symbolExpression, lines, []rune(line), number, lineIndex, previousCharacterIndex, nextCharacterIndex, start, charIndex-1) != "" {
+					result += uint32(number)
+				}
 
 				strNumber = ""
 				start = -1
 			}
+		}
+	}
+
+	return result
+}
+
+func StarTwo(input string) uint64 {
+	gearExpression := regexp.MustCompile(`[\*]`)
+	dictionary := make(map[string][]uint64)
+	lines := strings.Split(input, "\n")
+	result := uint64(0)
+
+	for lineIndex, line := range lines {
+		strNumber := ""
+		start := -1
+
+		for charIndex, character := range line {
+			if partNumberExpression.MatchString(string(character)) {
+				strNumber += string(character)
+				if start == -1 {
+					start = charIndex
+				}
+			}
+			if strNumber != "" && (!partNumberExpression.MatchString(string(character)) || charIndex == len(line)-1) {
+				number, _ := strconv.Atoi(strNumber)
+				previousCharacterIndex := start - 1
+				nextCharacterIndex := charIndex
+
+				symbolIndex := adjacentSymbol(gearExpression, lines, []rune(line), number, lineIndex, previousCharacterIndex, nextCharacterIndex, start, charIndex-1)
+
+				if symbolIndex != "" {
+					if dictionary[symbolIndex] == nil {
+						dictionary[symbolIndex] = []uint64{uint64(number)}
+					} else {
+						dictionary[symbolIndex] = append(dictionary[symbolIndex], uint64(number))
+					}
+				}
+
+				strNumber = ""
+				start = -1
+			}
+		}
+	}
+
+	for _, value := range dictionary {
+		if len(value) == 2 {
+			result += value[0] * value[1]
 		}
 	}
 
