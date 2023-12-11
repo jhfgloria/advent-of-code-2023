@@ -1,7 +1,6 @@
 package day_four
 
 import (
-	"fmt"
 	"math"
 	"regexp"
 	"strings"
@@ -50,16 +49,23 @@ func StarOne(input string) uint16 {
 	return result
 }
 
-func StarTwo(input string) uint16 {
+func StarTwo(input string) uint32 {
 	lines := strings.Split(input, "\n")
-	result := uint16(0)
-	repitions := make(map[uint16]uint16)
 
-	for i := 0; i < len(lines); i++ {
+	var filteredLines []string
+	result := uint32(0)
+	for _, line := range lines {
+		if line != "" {
+			filteredLines = append(filteredLines, line)
+		}
+	}
+	repitions := make(map[uint16]uint32)
+
+	for i := 0; i < len(filteredLines); i++ {
 		repitions[uint16(i)] = 1
 	}
 
-	for lineIndex, line := range lines {
+	for lineIndex, line := range filteredLines {
 		if line == "" {
 			continue
 		}
@@ -67,14 +73,16 @@ func StarTwo(input string) uint16 {
 		cardMatch := cardExpression.FindStringSubmatch(line)
 		extraCards := matchingNumbers(cardMatch[1], cardMatch[2])
 
-		for i := uint16(0); i < extraCards; i++ {
+		for i := uint16(1); i <= extraCards; i++ {
 			if _, ok := repitions[uint16(lineIndex)+i]; ok {
-				repitions[uint16(lineIndex)+i] += repitions[uint16(lineIndex)]
+				repitions[uint16(lineIndex)+i] += (repitions[uint16(lineIndex)])
 			}
 		}
 	}
 
-	fmt.Println(repitions)
+	for _, repition := range repitions {
+		result += repition
+	}
 
 	return result
 }
