@@ -1,8 +1,8 @@
 package day_five
 
 import (
+	"fmt"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -45,39 +45,84 @@ func extractConversionMap(mapLine string) []uint32 {
 	return conversionMap
 }
 
-func seedToLocation(lines []string, seeds mapset.Set[uint32]) uint32 {
-	conversions := mapset.NewSet[uint32]()
-	removals := mapset.NewSet[uint32]()
+func seedToLocation(lines []string, seeds mapset.Set[SeedRange]) uint32 {
+	conversions := mapset.NewSet[SeedRange]()
+	removals := mapset.NewSet[SeedRange]()
+
+	fmt.Println(seeds)
 
 	for _, line := range lines[2:] {
 		if mapExpression.MatchString(line) {
 			// start processing map
+			fmt.Println("start processing map")
 			conversions.Clear()
 			removals.Clear()
 		} else if line == "" {
 			// finish processing map
+			fmt.Println("finish processing map")
+			fmt.Println(seeds)
 			seeds = seeds.Difference(removals)
 			conversions = conversions.Union(seeds)
 			seeds = conversions.Clone()
 		} else {
 			// process map
+			fmt.Println("processing map")
 			conversionMap := extractConversionMap(line)
+			baseReplacement := conversionMap[0]
+			higherLimit := conversionMap[1] + conversionMap[2] - 1
+			lowerLimit := conversionMap[1]
+
 			for seed := range seeds.Iter() {
-				if seed >= conversionMap[1] && seed <= conversionMap[1]+conversionMap[2]-1 {
-					conversions.Add(seed + (conversionMap[0] - conversionMap[1]))
-					removals.Add(seed)
+				if seed.start > higherLimit {
+					// above limits
+					fmt.Println("above limits")
+					conversions.Add(seed)
+				} else if seed.start+seed.rangeSize-1 < lowerLimit {
+					// below limits
+					fmt.Println("below limits")
+					conversions.Add(seed)
+				} else {
+					// in limits
+					// fmt.Println("in limits")
+					if seed.start < lowerLimit && seed.start+seed.rangeSize-1 <= higherLimit {
+						// partially below limit and within range
+						fmt.Println("partially below limit and within range")
+						conversions.Add(SeedRange{start: seed.start, rangeSize: lowerLimit - seed.start})
+						conversions.Add(SeedRange{start: baseReplacement, rangeSize: seed.rangeSize - lowerLimit})
+						// WHEN I ADD A REPLACEMENT SEED, I NEED TO ADD THE ORIGINAL SEED TO THE REMOVALS
+					}
+					if seed.start >= lowerLimit && seed.start+seed.rangeSize-1 > higherLimit {
+						// partially above limit and within range
+						fmt.Println("partially above limit and within range")
+						conversions.Add(SeedRange{start: seed.start + baseReplacement - lowerLimit, rangeSize: higherLimit - seed.start})
+						conversions.Add(SeedRange{start: lowerLimit + 1, rangeSize: seed.start + seed.rangeSize + 1 - higherLimit})
+					}
+					if seed.start >= lowerLimit && seed.start+seed.rangeSize-1 <= higherLimit {
+						// within range
+						fmt.Println("within range", seed.start, seed.start+baseReplacement-lowerLimit)
+						conversions.Add(SeedRange{start: seed.start + baseReplacement - lowerLimit, rangeSize: seed.rangeSize})
+					}
 				}
 			}
 		}
 	}
 
-	return slices.Min(seeds.ToSlice())
+	result := 999999999999
+	for seed := range seeds.Iter() {
+		if int(seed.start) < result {
+			result = int(seed.start)
+		}
+	}
+	return uint32(result)
 }
 
 func StarOne(input string) uint32 {
 	lines := strings.Split(input, "\n")
-	seeds := extractSeedsInfo(lines[0])
-	return seedToLocation(lines, seeds)
+	seedRange := mapset.NewSet[SeedRange]()
+	for info := range extractSeedsInfo(lines[0]).Iter() {
+		seedRange.Add(SeedRange{start: info, rangeSize: 1})
+	}
+	return seedToLocation(lines, seedRange)
 }
 
 // func StarTwo(input string) uint32 {
