@@ -60,10 +60,9 @@ func seedToLocation(lines []string, seeds mapset.Set[SeedRange]) uint32 {
 		} else if line == "" {
 			// finish processing map
 			fmt.Println("finish processing map")
-			fmt.Println(seeds)
-			seeds = seeds.Difference(removals)
-			conversions = conversions.Union(seeds)
-			seeds = conversions.Clone()
+			fmt.Println("Seeds", seeds, "Removals", removals, "Conversions", conversions)
+
+			seeds = conversions.Difference(removals)
 		} else {
 			// process map
 			fmt.Println("processing map")
@@ -88,19 +87,21 @@ func seedToLocation(lines []string, seeds mapset.Set[SeedRange]) uint32 {
 						// partially below limit and within range
 						fmt.Println("partially below limit and within range")
 						conversions.Add(SeedRange{start: seed.start, rangeSize: lowerLimit - seed.start})
-						conversions.Add(SeedRange{start: baseReplacement, rangeSize: seed.rangeSize - lowerLimit})
-						// WHEN I ADD A REPLACEMENT SEED, I NEED TO ADD THE ORIGINAL SEED TO THE REMOVALS
+						conversions.Add(SeedRange{start: baseReplacement, rangeSize: seed.rangeSize - (lowerLimit - seed.start)})
+						removals.Add(seed)
 					}
 					if seed.start >= lowerLimit && seed.start+seed.rangeSize-1 > higherLimit {
 						// partially above limit and within range
 						fmt.Println("partially above limit and within range")
 						conversions.Add(SeedRange{start: seed.start + baseReplacement - lowerLimit, rangeSize: higherLimit - seed.start})
 						conversions.Add(SeedRange{start: lowerLimit + 1, rangeSize: seed.start + seed.rangeSize + 1 - higherLimit})
+						removals.Add(seed)
 					}
 					if seed.start >= lowerLimit && seed.start+seed.rangeSize-1 <= higherLimit {
 						// within range
 						fmt.Println("within range", seed.start, seed.start+baseReplacement-lowerLimit)
 						conversions.Add(SeedRange{start: seed.start + baseReplacement - lowerLimit, rangeSize: seed.rangeSize})
+						removals.Add(seed)
 					}
 				}
 			}
@@ -125,18 +126,16 @@ func StarOne(input string) uint32 {
 	return seedToLocation(lines, seedRange)
 }
 
-// func StarTwo(input string) uint32 {
-// 	lines := strings.Split(input, "\n")
-// 	seedsInfo := append([]uint32{}, extractSeedsInfoSlice(lines[0])...)
-// 	seeds := mapset.NewSet[uint32]()
+func StarTwo(input string) uint32 {
+	lines := strings.Split(input, "\n")
+	seedsInfo := append([]uint32{}, extractSeedsInfoSlice(lines[0])...)
+	seeds := mapset.NewSet[SeedRange]()
 
-// 	for i := uint32(0); i < uint32(len(seedsInfo))-1; i += 2 {
-// 		start := seedsInfo[i]
-// 		rangeSize := seedsInfo[i+1]
-// 		for j := start; j < start+rangeSize; j++ {
-// 			seeds.Add(j)
-// 		}
-// 	}
+	for i := uint32(0); i < uint32(len(seedsInfo))-1; i += 2 {
+		start := seedsInfo[i]
+		rangeSize := seedsInfo[i+1]
+		seeds.Add(SeedRange{start: start, rangeSize: rangeSize})
+	}
 
-// 	return seedToLocation(lines, seeds)
-// }
+	return seedToLocation(lines, seeds)
+}
