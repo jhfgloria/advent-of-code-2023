@@ -3,7 +3,17 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: advent-of-code-2023
+  links:
+    - url: https://adventofcode.com/2023
+      title: Advent of Code 2023
+      type: proposition
+  tags:
+    - go
 spec:
-  type: website
+  type: application
   lifecycle: production
   owner: developers
+  dependsOn:
+    - component:default/advent-of-code-2022
+  dependencyOf:
+    - component:default/advent-of-code-2024
